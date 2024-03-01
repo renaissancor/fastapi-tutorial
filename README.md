@@ -1,5 +1,5 @@
 
-# Fast API Tutorial 
+# Fast API Tutorial Setup Guide 
 
 1. install python and create directory 
 
@@ -43,3 +43,32 @@ deactivate
 ``` 
 
 ## Start and Finish Guide 
+
+Activate Python Virtual Environment 
+
+
+```bash 
+source env/bin/activate # Mac OS 
+.\env\Scripts\activate # Windows 
+```
+
+Run uvicorn 
+
+```bash 
+uvicorn main:app --reload 
+``` 
+
+
+Documentation Link based on OpenAPI Standard 
+
+Open http://127.0.0.1:8000/docs 
+
+FastAPI alternative API documation by ReDoc 
+
+http://127.0.0.1:8000/redoc
+
+Finish Python Virtual Environment 
+
+```
+deactivate 
+```
