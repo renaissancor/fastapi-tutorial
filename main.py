@@ -1,25 +1,9 @@
-from fastapi import FastAPI
+from typing import Annotated
+from fastapi import FastAPI, Query
 from enum import Enum
 from pydantic import BaseModel
 
 app = FastAPI()
-
-@app.get("/users")
-async def read_users():
-    return ["Rick", "Morty"]
-
-@app.get("/users")
-async def read_users2():
-    return ["Bean", "Elfo"]
-
-@app.get("/users/me")
-async def read_user_me():
-    return {"user_id": "the current user"}
-
-
-@app.get("/users/{user_id}")
-async def read_user(user_id: str):
-    return {"user_id": user_id}
 
 class ModelName(str, Enum):
     alexnet = "alexnet"
@@ -40,22 +24,38 @@ async def get_model(model_name: ModelName):
 async def read_file(file_path: str):
     return {"file_path": file_path}
 
-fake_items_db = [{"item_name": "Foo"}, {"item_name": "Bar"}, {"item_name": "Baz"}]
+class Item(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+
 @app.get("/items/")
-async def read_item(skip: int = 0, limit: int = 10):
-    return fake_items_db[skip : skip + limit]
+async def read_items(
+    q: Annotated[
+        str | None,
+        Query(
+            alias="item-query",
+            title="Query string",
+            description="Query string for the items to search in the database that have a good match",
+            min_length=3,
+            max_length=50,
+            pattern="^fixedquery$",
+            deprecated=True, 
+            # include_in_schema = False 
+        ),
+    ] = None,
+):
+    results = {"items": [{"item_id": "Foo"}, {"item_id": "Bar"}]}
+    if q:
+        results.update({"q": q})
+    return results
 
 @app.get("/items/{item_id}")
 async def read_item(item_id: str, q: str | None = None):
     if q:
         return {"item_id": item_id, "q": q}
     return {"item_id": item_id}
-
-class Item(BaseModel):
-    name: str
-    description: str | None = None
-    price: float
-    tax: float | None = None
 
 @app.post("/items/")
 async def create_item(item: Item):
