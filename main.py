@@ -1,7 +1,7 @@
 from typing import Annotated
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Path, Body 
 from enum import Enum
-from pydantic import BaseModel
+from pydantic import BaseModel, Field 
 
 app = FastAPI()
 
@@ -26,12 +26,19 @@ async def read_file(file_path: str):
 
 class Item(BaseModel):
     name: str
-    description: str | None = None
-    price: float
+    description: str | None = Field(
+        default=None, title="The description of the item", max_length=300
+    )
+    price: float = Field(gt=0, description="The price must be greater than zero")
     tax: float | None = None
+
+class User(BaseModel):
+    username: str
+    full_name: str | None = None
 
 @app.get("/items/")
 async def read_items(
+    item_id: int = Path(title="The ID of the item to get"),
     q: Annotated[
         str | None,
         Query(
@@ -52,10 +59,14 @@ async def read_items(
     return results
 
 @app.get("/items/{item_id}")
-async def read_item(item_id: str, q: str | None = None):
+async def read_items(
+    item_id: int = Path(title="The ID of the item to get"),
+    q: str | None = Query(default=None, alias="item-query"),
+):
+    results = {"item_id": item_id}
     if q:
-        return {"item_id": item_id, "q": q}
-    return {"item_id": item_id}
+        results.update({"q": q})
+    return results
 
 @app.post("/items/")
 async def create_item(item: Item):
@@ -66,12 +77,52 @@ async def create_item(item: Item):
     return item_dict
 
 @app.put("/items/{item_id}")
-async def update_item(item_id: int, item: Item):
-    return {"item_id": item_id, **item.dict()}
+async def update_item(
+    *,
+    item_id: int,
+    item: Annotated[Item, Body(embed=True)],
+    user: User,
+    importance: Annotated[int, Body(gt=0)],
+    q: str | None = None,
+):
+    results = {"item_id": item_id, "item": item, "user": user, "importance": importance}
+    if q:
+        results.update({"q": q})
+    return results
 
 @app.put("/items/{item_id}")
-async def update_item(item_id: int, item: Item, q: str | None = None):
-    result = {"item_id": item_id, **item.dict()}
-    if q:
-        result.update({"q": q})
-    return result
+async def update_item(
+    *,
+    item_id: int,
+    item: Item = Body(
+        openapi_examples={
+            "normal": {
+                "summary": "A normal example",
+                "description": "A **normal** item works correctly.",
+                "value": {
+                    "name": "Foo",
+                    "description": "A very nice Item",
+                    "price": 35.4,
+                    "tax": 3.2,
+                },
+            },
+            "converted": {
+                "summary": "An example with converted data",
+                "description": "FastAPI can convert price `strings` to actual `numbers` automatically",
+                "value": {
+                    "name": "Bar",
+                    "price": "35.4",
+                },
+            },
+            "invalid": {
+                "summary": "Invalid data is rejected with an error",
+                "value": {
+                    "name": "Baz",
+                    "price": "thirty five point four",
+                },
+            },
+        },
+    ),
+):
+    results = {"item_id": item_id, "item": item}
+    return results
